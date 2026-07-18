@@ -21,6 +21,9 @@ dev = [
     "pytest-cov>=5.0",
     "hypothesis>=6.90",
 ]
+langgraph = [
+    "langgraph>=0.2.0",
+]
 
 [project.scripts]
 sopvm = "cli.main:main"
