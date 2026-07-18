@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: sopvm
+Version: 0.2.0
+Summary: A compiler and capability-gated runtime for Standard Operating Procedures executed by LLM agents.
+Author: Sushit
+License: Apache-2.0
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: jsonschema>=4.20
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: hypothesis>=6.90; extra == "dev"

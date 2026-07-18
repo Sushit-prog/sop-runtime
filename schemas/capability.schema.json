@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CapabilityToken",
+  "description": "JSON Schema for capability tokens (INTERFACES.md §3).",
+  "type": "object",
+  "required": ["namespace", "action", "params"],
+  "properties": {
+    "namespace": {
+      "type": "string",
+      "examples": ["fs", "net", "db", "payments", "notify"]
+    },
+    "action": {
+      "type": "string",
+      "examples": ["read", "write", "http", "refund"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "raw": {
+      "type": "string",
+      "description": "Original string form, e.g. payments:refund(max_amount=100.00)"
+    }
+  }
+}

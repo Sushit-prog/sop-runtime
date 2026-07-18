@@ -1,0 +1,35 @@
+sop_version: "0.1"
+name: "refund-request-handling"
+policy: "policies/support-agent.policy.yaml"
+
+steps:
+  - id: verify_identity
+    description: "Confirm requester identity via order lookup"
+    requires:
+      capabilities: ["db:read(orders)"]
+    on_success: check_eligibility
+    on_failure: escalate_human
+
+  - id: check_eligibility
+    description: "Check refund policy eligibility"
+    requires:
+      capabilities: ["db:read(orders)", "db:read(policy_rules)"]
+    on_success: issue_refund
+    on_failure: escalate_human
+
+  - id: issue_refund
+    description: "Issue refund via payment provider"
+    requires:
+      capabilities: ["payments:refund(max_amount=100.00)"]
+    on_success: notify_user
+    on_failure: escalate_human
+
+  - id: notify_user
+    terminal: true
+    requires:
+      capabilities: ["notify:email"]
+
+  - id: escalate_human
+    terminal: true
+    requires:
+      capabilities: ["notify:slack(channel=support-escalations)"]

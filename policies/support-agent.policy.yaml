@@ -1,0 +1,7 @@
+policy_version: "0.1"
+allowed_capabilities:
+  - "db:read(orders)"
+  - "db:read(policy_rules)"
+  - "payments:refund(max_amount<=100.00)"
+  - "notify:email"
+  - "notify:slack(channel=support-escalations)"

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sopvm"
+version = "0.1.0"
+description = "A compiler and capability-gated runtime for Standard Operating Procedures executed by LLM agents."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Sushit" }]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[project.scripts]
+sopvm = "cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["sopvm*", "cli*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

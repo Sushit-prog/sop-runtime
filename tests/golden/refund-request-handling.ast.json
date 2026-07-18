@@ -1,0 +1,79 @@
+{
+  "version": "0.1",
+  "policy_ref": "policies/support-agent.policy.yaml",
+  "steps": [
+    {
+      "id": "verify_identity",
+      "description": "Confirm requester identity via order lookup",
+      "requires": [
+        {
+          "raw": "db:read(orders)"
+        }
+      ],
+      "edges": {
+        "on_success": "check_eligibility",
+        "on_failure": "escalate_human"
+      },
+      "terminal": false
+    },
+    {
+      "id": "check_eligibility",
+      "description": "Check refund policy eligibility",
+      "requires": [
+        {
+          "raw": "db:read(orders)"
+        },
+        {
+          "raw": "db:read(policy_rules)"
+        }
+      ],
+      "edges": {
+        "on_success": "issue_refund",
+        "on_failure": "escalate_human"
+      },
+      "terminal": false
+    },
+    {
+      "id": "issue_refund",
+      "description": "Issue refund via payment provider",
+      "requires": [
+        {
+          "raw": "payments:refund(max_amount=100.00)"
+        }
+      ],
+      "edges": {
+        "on_success": "notify_user",
+        "on_failure": "escalate_human"
+      },
+      "terminal": false
+    },
+    {
+      "id": "notify_user",
+      "description": null,
+      "requires": [
+        {
+          "raw": "notify:email"
+        }
+      ],
+      "edges": {
+        "on_success": null,
+        "on_failure": null
+      },
+      "terminal": true
+    },
+    {
+      "id": "escalate_human",
+      "description": null,
+      "requires": [
+        {
+          "raw": "notify:slack(channel=support-escalations)"
+        }
+      ],
+      "edges": {
+        "on_success": null,
+        "on_failure": null
+      },
+      "terminal": true
+    }
+  ]
+}

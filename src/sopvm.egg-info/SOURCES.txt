@@ -1,0 +1,12 @@
+pyproject.toml
+src/sopvm/__init__.py
+src/sopvm.egg-info/PKG-INFO
+src/sopvm.egg-info/SOURCES.txt
+src/sopvm.egg-info/dependency_links.txt
+src/sopvm.egg-info/entry_points.txt
+src/sopvm.egg-info/requires.txt
+src/sopvm.egg-info/top_level.txt
+src/sopvm/parser/__init__.py
+src/sopvm/parser/ast.py
+src/sopvm/parser/errors.py
+src/sopvm/parser/parse.py

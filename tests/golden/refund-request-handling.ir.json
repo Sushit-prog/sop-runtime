@@ -1,0 +1,67 @@
+{
+  "entry": "verify_identity",
+  "ir_version": "0.1",
+  "nodes": {
+    "check_eligibility": {
+      "capabilities_declared": [
+        "db:read(orders)",
+        "db:read(policy_rules)"
+      ],
+      "capabilities_paged": [
+        "db:read(orders)",
+        "db:read(policy_rules)"
+      ],
+      "edges": {
+        "on_failure": "escalate_human",
+        "on_success": "issue_refund"
+      },
+      "terminal": false
+    },
+    "escalate_human": {
+      "capabilities_declared": [
+        "notify:slack(channel=support-escalations)"
+      ],
+      "capabilities_paged": [
+        "notify:slack(channel=support-escalations)"
+      ],
+      "edges": {},
+      "terminal": true
+    },
+    "issue_refund": {
+      "capabilities_declared": [
+        "payments:refund(max_amount=100.00)"
+      ],
+      "capabilities_paged": [
+        "payments:refund(max_amount=100.00)"
+      ],
+      "edges": {
+        "on_failure": "escalate_human",
+        "on_success": "notify_user"
+      },
+      "terminal": false
+    },
+    "notify_user": {
+      "capabilities_declared": [
+        "notify:email"
+      ],
+      "capabilities_paged": [
+        "notify:email"
+      ],
+      "edges": {},
+      "terminal": true
+    },
+    "verify_identity": {
+      "capabilities_declared": [
+        "db:read(orders)"
+      ],
+      "capabilities_paged": [
+        "db:read(orders)"
+      ],
+      "edges": {
+        "on_failure": "escalate_human",
+        "on_success": "check_eligibility"
+      },
+      "terminal": false
+    }
+  }
+}
