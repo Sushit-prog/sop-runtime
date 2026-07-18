@@ -122,6 +122,29 @@ class Executor:
             except Exception:
                 pass  # Telemetry failure must not crash the run
 
+    def _validate_paged_capabilities(self) -> None:
+        """Re-validate capabilities_paged against the policy at runtime.
+
+        Catches IR tampering: if someone hand-edits the IR JSON to
+        include capabilities_paged entries that the policy would never
+        allow, this rejects them before execution begins.
+        """
+        if self._policy is None:
+            return  # No policy provided — skip validation (backwards compat)
+
+        from sopvm.capability.token import parse_capability
+        from sopvm.checker.check import satisfies
+
+        for step_id, node in self._program.nodes.items():
+            for cap_str in node.capabilities_paged:
+                token = parse_capability(cap_str)
+                if not any(satisfies(token, a) for a in self._policy.allowed_capabilities):
+                    raise ExecutorError(
+                        f"IR tampering detected: step {step_id!r} has "
+                        f"paged capability {cap_str!r} that is not "
+                        f"satisfied by any entry in the policy"
+                    )
+
     def run(self) -> RunResult:
         """Execute the program to completion.
 
@@ -129,9 +152,10 @@ class Executor:
             A ``RunResult`` with the final state, execution path, and run_id.
 
         Raises:
-            ExecutorError: If the graph is malformed or the step limit
-                is exceeded (infinite-loop detection).
+            ExecutorError: If the graph is malformed, the step limit
+                is exceeded, or IR tampering is detected.
         """
+        self._validate_paged_capabilities()
         self._run_id = str(uuid4())
         path: list[str] = []
         current_id = self._program.entry
