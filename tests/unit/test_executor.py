@@ -120,20 +120,23 @@ class TestEvents:
         events: list[Event] = []
         handler = FakeHandler(default=StepState.DONE)
         Executor(prog, handler, on_event=events.append).run()
-        assert len(events) == 2
-        assert events[0].event_type == "step_started"
-        assert events[0].step_id == "a"
-        assert events[1].event_type == "step_completed"
+        # M10 adds run_started and run_completed events
+        assert len(events) == 4
+        assert events[0].event == "run_started"
+        assert events[1].event == "step_started"
         assert events[1].step_id == "a"
-        assert events[1].extra["state"] == "DONE"
+        assert events[2].event == "step_completed"
+        assert events[2].step_id == "a"
+        assert events[2].extra["state"] == "DONE"
+        assert events[3].event == "run_completed"
 
     def test_events_for_chain(self):
         prog = _linear_program("a", "b")
         events: list[Event] = []
         handler = FakeHandler(default=StepState.DONE)
         Executor(prog, handler, on_event=events.append).run()
-        started = [e for e in events if e.event_type == "step_started"]
-        completed = [e for e in events if e.event_type == "step_completed"]
+        started = [e for e in events if e.event == "step_started"]
+        completed = [e for e in events if e.event == "step_completed"]
         assert len(started) == 2
         assert len(completed) == 2
         assert [e.step_id for e in started] == ["a", "b"]

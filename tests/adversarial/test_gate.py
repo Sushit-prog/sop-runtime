@@ -155,12 +155,12 @@ def test_multiple_caps_one_denied():
 
 # --- Capability_denied event emitted on denial -----------------------------
 def test_denied_event_emitted():
-    from sopvm.runtime.events import Event
+    from sopvm.telemetry.events import Event
     prog = _program_with_caps("a", ["db:read(orders)"])
     handler = DenyAllHandler("fs:write(/tmp)")
     events: list[Event] = []
     Executor(prog, handler, on_event=events.append).run()
-    denied_events = [e for e in events if e.event_type == "capability_denied"]
+    denied_events = [e for e in events if e.event == "capability_denied"]
     assert len(denied_events) == 1
     assert denied_events[0].step_id == "a"
     assert "fs:write" in denied_events[0].extra["requested"]

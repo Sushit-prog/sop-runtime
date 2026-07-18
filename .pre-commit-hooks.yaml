@@ -1,0 +1,7 @@
+- id: sopvm-check
+  name: SOPVM policy check
+  description: Check a compiled SOP IR against a policy file
+  entry: sopvm check
+  language: python
+  types: [json]
+  args: ["--policy", "policy.yaml"]
