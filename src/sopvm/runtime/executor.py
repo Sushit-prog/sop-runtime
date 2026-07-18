@@ -1,31 +1,42 @@
-"""Runtime executor loop (Milestone 6).
+"""Runtime executor loop (Milestone 6 + 7).
 
 Drives a ``CompiledProgram`` through a fixed state machine, calling a
-``StepHandler`` at each step. No tool-calling logic yet — the handler
-is a protocol that returns DONE/FAILED only (DENIED comes from M7's
-capability gate).
+``StepHandler`` at each step. M7 adds the capability gate: before any
+tool call is invoked, it runs through ``CapabilityGate.enforce()``. If
+denied, the step transitions to DENIED immediately — no retry, no
+recovery.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Callable, Protocol, runtime_checkable
 
+from sopvm.capability.token import CapabilityToken
 from sopvm.ir.model import CompiledProgram, IrNode
 
 from .events import Event, noop_event
+from .gate import CapabilityGate
 from .state import StepState
+from .violations import Violation
 
 
 @runtime_checkable
 class StepHandler(Protocol):
     """Protocol for step execution.
 
-    M6 implementations return DONE or FAILED. M7 adds the capability
-    gate that can return DENIED.
+    The ``request_tool`` callback checks the capability gate. Returns
+    True if the tool call is allowed, False if denied. If denied, the
+    executor transitions the step to DENIED immediately.
+
+    Handlers MUST call ``request_tool`` before any tool invocation.
     """
 
-    def execute(self, node: IrNode) -> StepState: ...
+    def execute(
+        self,
+        node: IrNode,
+        request_tool: Callable[[CapabilityToken], bool],
+    ) -> StepState: ...
 
 
 @dataclass(frozen=True)
@@ -35,10 +46,12 @@ class RunResult:
     Attributes:
         final_state: The terminal state reached (DONE, FAILED, or DENIED).
         path: Ordered list of step ids that were executed.
+        violation: If the run was denied, the Violation record; else None.
     """
 
     final_state: StepState
     path: tuple[str, ...]
+    violation: Violation | None = None
 
 
 class ExecutorError(Exception):
@@ -60,13 +73,15 @@ class Executor:
         self,
         program: CompiledProgram,
         handler: StepHandler,
-        on_event: callable[[Event], None] = noop_event,
+        on_event: Callable[[Event], None] = noop_event,
         max_steps: int = 10000,
     ) -> None:
         self._program = program
         self._handler = handler
         self._on_event = on_event
         self._max_steps = max_steps
+        self._gate = CapabilityGate()
+        self._current_violation: Violation | None = None
 
     def run(self) -> RunResult:
         """Execute the program to completion.
@@ -104,8 +119,32 @@ class Executor:
                 step_id=current_id,
             ))
 
+            # Build the gate-wrapped request_tool callback
+            def make_request_tool(sid: str, n: IrNode) -> Callable[[CapabilityToken], bool]:
+                def request_tool(cap: CapabilityToken) -> bool:
+                    violation = self._gate.enforce(sid, cap, n)
+                    if violation is not None:
+                        self._current_violation = violation
+                        self._on_event(Event(
+                            event_type="capability_denied",
+                            step_id=sid,
+                            extra={
+                                "requested": cap.raw,
+                                "reason": violation.reason,
+                            },
+                        ))
+                        return False
+                    return True
+                return request_tool
+
+            request_tool = make_request_tool(current_id, node)
+
             # Execute the step
-            result = self._handler.execute(node)
+            result = self._handler.execute(node, request_tool)
+
+            # If a tool call was denied during execution, override result
+            if self._current_violation is not None:
+                result = StepState.DENIED
 
             # Emit end event
             self._on_event(Event(
@@ -114,9 +153,13 @@ class Executor:
                 extra={"state": result.value},
             ))
 
-            # DENIED always terminates immediately
+            # DENIED always terminates immediately — no retry, no recovery
             if result == StepState.DENIED:
-                return RunResult(final_state=StepState.DENIED, path=tuple(path))
+                return RunResult(
+                    final_state=StepState.DENIED,
+                    path=tuple(path),
+                    violation=self._current_violation,
+                )
 
             # Determine next step based on handler result + terminal flag
             if node.terminal:

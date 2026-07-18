@@ -1,7 +1,10 @@
 """Unit tests for the runtime executor."""
 
+from typing import Callable
+
 import pytest
 
+from sopvm.capability.token import CapabilityToken
 from sopvm.ir.model import CompiledProgram, IrNode
 from sopvm.runtime.events import Event
 from sopvm.runtime.executor import Executor, ExecutorError, RunResult
@@ -17,11 +20,10 @@ class FakeHandler:
         self._default = default
         self.call_count: dict[str, int] = {}
 
-    def execute(self, node: IrNode) -> StepState:
-        # We don't have the step_id here, so track via call count
+    def execute(self, node: IrNode,
+                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
         step_id = id(node)
         self.call_count[step_id] = self.call_count.get(step_id, 0) + 1
-        # Return based on call count (for multi-visit testing)
         count = self.call_count[step_id]
         if count in self._results:
             return self._results[count]
@@ -83,7 +85,6 @@ class TestLinearExecution:
 
     def test_linear_chain_stops_on_failure(self):
         prog = _linear_program("a", "b", "c")
-        # All steps fail — follows on_failure through the chain
         handler = FakeHandler(default=StepState.FAILED)
         result = Executor(prog, handler).run()
         assert result.final_state == StepState.FAILED
@@ -106,7 +107,6 @@ class TestBranchingExecution:
         assert result.path == ("a", "c")
 
     def test_first_fails_second_succeeds(self):
-        """First step fails, follows on_failure to terminal."""
         prog = _branching_program()
         handler = FakeHandler(default=StepState.FAILED)
         result = Executor(prog, handler).run()
@@ -161,7 +161,6 @@ class TestErrors:
             Executor(prog, handler).run()
 
     def test_step_limit_raises(self):
-        # Create a program that loops: a -> a
         prog = CompiledProgram(
             ir_version="0.1",
             entry="a",

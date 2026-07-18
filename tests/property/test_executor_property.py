@@ -1,8 +1,11 @@
 """Property-based tests for the executor."""
 
+from typing import Callable
+
 import hypothesis.strategies as st
 from hypothesis import given, settings
 
+from sopvm.capability.token import CapabilityToken
 from sopvm.ir.model import CompiledProgram, IrNode
 from sopvm.runtime.executor import Executor, ExecutorError
 from sopvm.runtime.state import StepState
@@ -13,13 +16,15 @@ _step_id = st.from_regex(r"[a-z]{1,6}", fullmatch=True)
 
 class AlwaysDone:
     """Handler that always returns DONE."""
-    def execute(self, node: IrNode) -> StepState:
+    def execute(self, node: IrNode,
+                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
         return StepState.DONE
 
 
 class AlwaysFail:
     """Handler that always returns FAILED."""
-    def execute(self, node: IrNode) -> StepState:
+    def execute(self, node: IrNode,
+                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
         return StepState.FAILED
 
 
@@ -53,7 +58,6 @@ def test_linear_program_terminates_with_failed(step_ids):
     prog = _linear_program(step_ids)
     result = Executor(prog, AlwaysFail()).run()
     assert result.final_state == StepState.FAILED
-    # Follows on_failure through the chain to the terminal step
     assert result.path == tuple(step_ids)
 
 
@@ -72,8 +76,6 @@ def test_run_result_never_pending_or_running(step_ids):
 @settings(max_examples=200, deadline=None)
 def test_branching_program_terminates(step_ids):
     """A branching program where first step always fails terminates quickly."""
-    # Build: a --failure--> b (terminal)
-    # All other steps are unreachable but defined
     nodes = {}
     for i, sid in enumerate(step_ids):
         if i == 0:
