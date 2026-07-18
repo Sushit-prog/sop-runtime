@@ -8,6 +8,7 @@ from typing import Callable
 
 from sopvm.capability.token import CapabilityToken, parse_capability
 from sopvm.ir.model import CompiledProgram, IrNode
+from sopvm.plugins.base import ToolResult
 from sopvm.runtime.executor import Executor, RunResult
 from sopvm.runtime.state import StepState
 
@@ -34,10 +35,12 @@ class DenyAllHandler:
         self.denied = False
 
     def execute(self, node: IrNode,
-                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
-        if request_tool and not request_tool(self._cap):
-            self.denied = True
-            return StepState.DENIED
+                request_tool: Callable[[CapabilityToken, dict], ToolResult] | None = None) -> StepState:
+        if request_tool:
+            result = request_tool(self._cap, {})
+            if not result.success:
+                self.denied = True
+                return StepState.DENIED
         return StepState.DONE
 
 
@@ -96,9 +99,10 @@ def test_within_scope_not_denied():
         def __init__(self):
             self.allowed = False
         def execute(self, node: IrNode,
-                    request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
+                    request_tool: Callable[[CapabilityToken, dict], ToolResult] | None = None) -> StepState:
             if request_tool:
-                self.allowed = request_tool(parse_capability("db:read(orders)"))
+                result = request_tool(parse_capability("db:read(orders)"), {})
+                self.allowed = result.success
             return StepState.DONE
 
     handler = AllowAllHandler()
@@ -130,10 +134,12 @@ def test_multiple_caps_one_denied():
             self.first_ok = False
             self.second_denied = False
         def execute(self, node: IrNode,
-                    request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
+                    request_tool: Callable[[CapabilityToken, dict], ToolResult] | None = None) -> StepState:
             if request_tool:
-                self.first_ok = request_tool(parse_capability("db:read(orders)"))
-                if not request_tool(parse_capability("notify:slack(channel=general)")):
+                r1 = request_tool(parse_capability("db:read(orders)"), {})
+                self.first_ok = r1.success
+                r2 = request_tool(parse_capability("notify:slack(channel=general)"), {})
+                if not r2.success:
                     self.second_denied = True
                     return StepState.DENIED
             return StepState.DONE

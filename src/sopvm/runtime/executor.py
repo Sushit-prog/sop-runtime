@@ -1,10 +1,10 @@
-"""Runtime executor loop (Milestone 6 + 7).
+"""Runtime executor loop (Milestone 6 + 7 + 8).
 
 Drives a ``CompiledProgram`` through a fixed state machine, calling a
-``StepHandler`` at each step. M7 adds the capability gate: before any
-tool call is invoked, it runs through ``CapabilityGate.enforce()``. If
-denied, the step transitions to DENIED immediately — no retry, no
-recovery.
+``StepHandler`` at each step. M7 adds the capability gate. M8 adds
+provider routing: approved calls go through ``ProviderRegistry.lookup()``
+→ ``wrap_provider()`` → ``invoke()``, applying both SOP-level scope
+(M7 gate) and provider-integrity (M8 sandbox) checks.
 """
 
 from __future__ import annotations
@@ -14,6 +14,9 @@ from typing import Callable, Protocol, runtime_checkable
 
 from sopvm.capability.token import CapabilityToken
 from sopvm.ir.model import CompiledProgram, IrNode
+from sopvm.plugins.base import ToolResult
+from sopvm.plugins.registry import ProviderRegistry
+from sopvm.plugins.sandbox import wrap_provider
 
 from .events import Event, noop_event
 from .gate import CapabilityGate
@@ -25,17 +28,21 @@ from .violations import Violation
 class StepHandler(Protocol):
     """Protocol for step execution.
 
-    The ``request_tool`` callback checks the capability gate. Returns
-    True if the tool call is allowed, False if denied. If denied, the
-    executor transitions the step to DENIED immediately.
+    The ``request_tool`` callback:
+    1. Checks the capability gate (M7)
+    2. Looks up the provider in the registry (M8)
+    3. Wraps the provider with sandbox integrity checks (M8)
+    4. Invokes the provider
+    5. Returns a ``ToolResult``
 
-    Handlers MUST call ``request_tool`` before any tool invocation.
+    If the gate denies, ``request_tool`` returns a failed ``ToolResult``
+    and the executor transitions the step to DENIED.
     """
 
     def execute(
         self,
         node: IrNode,
-        request_tool: Callable[[CapabilityToken], bool],
+        request_tool: Callable[[CapabilityToken, dict], ToolResult],
     ) -> StepState: ...
 
 
@@ -65,6 +72,7 @@ class Executor:
         program: The compiled IR program to execute.
         handler: Callback that executes a single step.
         on_event: Optional event callback (default: no-op).
+        registry: Optional provider registry for tool routing (M8).
         max_steps: Safety limit to prevent infinite loops. Defaults to
             10000; raised to a large value if needed.
     """
@@ -74,11 +82,13 @@ class Executor:
         program: CompiledProgram,
         handler: StepHandler,
         on_event: Callable[[Event], None] = noop_event,
+        registry: ProviderRegistry | None = None,
         max_steps: int = 10000,
     ) -> None:
         self._program = program
         self._handler = handler
         self._on_event = on_event
+        self._registry = registry
         self._max_steps = max_steps
         self._gate = CapabilityGate()
         self._current_violation: Violation | None = None
@@ -119,9 +129,10 @@ class Executor:
                 step_id=current_id,
             ))
 
-            # Build the gate-wrapped request_tool callback
-            def make_request_tool(sid: str, n: IrNode) -> Callable[[CapabilityToken], bool]:
-                def request_tool(cap: CapabilityToken) -> bool:
+            # Build the gate+registry-wrapped request_tool callback
+            def make_request_tool(sid: str, n: IrNode) -> Callable[[CapabilityToken, dict], ToolResult]:
+                def request_tool(cap: CapabilityToken, args: dict) -> ToolResult:
+                    # M7 gate check
                     violation = self._gate.enforce(sid, cap, n)
                     if violation is not None:
                         self._current_violation = violation
@@ -133,8 +144,28 @@ class Executor:
                                 "reason": violation.reason,
                             },
                         ))
-                        return False
-                    return True
+                        return ToolResult(
+                            success=False,
+                            error=f"capability denied: {violation.reason}",
+                        )
+
+                    # M8 provider routing
+                    if self._registry is not None:
+                        provider = self._registry.lookup(cap)
+                        if provider is None:
+                            return ToolResult(
+                                success=False,
+                                error=f"no provider registered for {cap.raw!r}",
+                            )
+                        sandboxed = wrap_provider(provider)
+                        try:
+                            return sandboxed.invoke(cap, args)
+                        except Exception as e:
+                            return ToolResult(success=False, error=str(e))
+
+                    # No registry — return a stub success
+                    return ToolResult(success=True)
+
                 return request_tool
 
             request_tool = make_request_tool(current_id, node)
@@ -163,7 +194,6 @@ class Executor:
 
             # Determine next step based on handler result + terminal flag
             if node.terminal:
-                # Terminal step: handler result determines final state
                 return RunResult(final_state=result, path=tuple(path))
 
             # Non-terminal step: follow edge based on handler result

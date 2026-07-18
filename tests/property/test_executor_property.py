@@ -17,14 +17,14 @@ _step_id = st.from_regex(r"[a-z]{1,6}", fullmatch=True)
 class AlwaysDone:
     """Handler that always returns DONE."""
     def execute(self, node: IrNode,
-                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
+                request_tool: Callable[[CapabilityToken, dict], object] | None = None) -> StepState:
         return StepState.DONE
 
 
 class AlwaysFail:
     """Handler that always returns FAILED."""
     def execute(self, node: IrNode,
-                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
+                request_tool: Callable[[CapabilityToken, dict], object] | None = None) -> StepState:
         return StepState.FAILED
 
 

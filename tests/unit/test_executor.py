@@ -21,7 +21,7 @@ class FakeHandler:
         self.call_count: dict[str, int] = {}
 
     def execute(self, node: IrNode,
-                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
+                request_tool: Callable[[CapabilityToken, dict], object] | None = None) -> StepState:
         step_id = id(node)
         self.call_count[step_id] = self.call_count.get(step_id, 0) + 1
         count = self.call_count[step_id]

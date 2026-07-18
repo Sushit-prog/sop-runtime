@@ -22,9 +22,10 @@ class GateTestHandler:
         self.approved = False
 
     def execute(self, node: IrNode,
-                request_tool: Callable[[CapabilityToken], bool] | None = None) -> StepState:
+                request_tool: Callable[[CapabilityToken, dict], object] | None = None) -> StepState:
         if request_tool:
-            self.approved = request_tool(self._cap)
+            result = request_tool(self._cap, {})
+            self.approved = getattr(result, 'success', False)
             if not self.approved:
                 return StepState.DENIED
         return StepState.DONE
