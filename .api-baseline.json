@@ -1,0 +1,18 @@
+{
+  "compile": [
+    "sop_path",
+    "policy_path"
+  ],
+  "check": [
+    "compiled"
+  ],
+  "Runtime": [
+    "compiled",
+    "providers"
+  ],
+  "__init__": [
+    "compiled",
+    "providers"
+  ],
+  "run": []
+}

@@ -72,6 +72,10 @@ class ExecutorError(Exception):
     """Raised on malformed graph or infinite-loop detection."""
 
 
+class UnsupportedIrVersionError(Exception):
+    """Raised when the IR file has an unsupported version."""
+
+
 class Executor:
     """Drives execution of a ``CompiledProgram``.
 
@@ -152,9 +156,18 @@ class Executor:
             A ``RunResult`` with the final state, execution path, and run_id.
 
         Raises:
-            ExecutorError: If the graph is malformed, the step limit
-                is exceeded, or IR tampering is detected.
+            ExecutorError: If the graph is malformed or the step limit
+                is exceeded.
+            UnsupportedIrVersionError: If the IR version is not supported.
         """
+        # Check IR version before doing anything else
+        from sopvm.ir.versions import SUPPORTED_IR_VERSIONS
+        if self._program.ir_version not in SUPPORTED_IR_VERSIONS:
+            raise UnsupportedIrVersionError(
+                f"IR version {self._program.ir_version!r} is not supported; "
+                f"supported versions: {', '.join(sorted(SUPPORTED_IR_VERSIONS))}"
+            )
+
         self._validate_paged_capabilities()
         self._run_id = str(uuid4())
         path: list[str] = []
