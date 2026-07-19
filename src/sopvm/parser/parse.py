@@ -21,7 +21,7 @@ _CAPABILITY_RE = re.compile(
     r"^[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*(?:\(.*\))?$"
 )
 
-_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "schemas" / "sop.schema.json"
+_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "sop.schema.json"
 _schema: dict | None = None
 
 

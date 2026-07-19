@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "sopvm"
-version = "0.2.0"
+dynamic = ["version"]
 description = "A compiler and capability-gated runtime for Standard Operating Procedures executed by LLM agents."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,16 +21,20 @@ dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "hypothesis>=6.90",
+    "build",
 ]
 langgraph = [
     "langgraph>=0.2.0",
 ]
 
 [project.scripts]
-sopvm = "cli.main:main"
+sopvm = "sopvm.cli.main:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.version]
+path = "src/sopvm/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sopvm"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

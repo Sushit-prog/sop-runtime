@@ -45,11 +45,13 @@ class CompiledProgram:
         ir_version: IR schema version.
         entry: The id of the first step (entry point).
         nodes: Mapping from step id to ``IrNode``.
+        policy_ref: Path to the policy file used during compilation.
     """
 
     ir_version: str
     entry: str
     nodes: dict[str, IrNode] = field(default_factory=dict)
+    policy_ref: str = ""
 
     def to_json(self) -> str:
         """Serialize to a JSON string with deterministic key ordering."""
@@ -68,12 +70,18 @@ class CompiledProgram:
             )
             for k, v in d["nodes"].items()
         }
-        return cls(ir_version=d["ir_version"], entry=d["entry"], nodes=nodes)
+        return cls(
+            ir_version=d["ir_version"],
+            entry=d["entry"],
+            nodes=nodes,
+            policy_ref=d.get("policy_ref", ""),
+        )
 
     def _to_dict(self) -> dict:
         return {
             "ir_version": self.ir_version,
             "entry": self.entry,
+            "policy_ref": self.policy_ref,
             "nodes": {
                 k: {
                     "capabilities_declared": v.capabilities_declared,

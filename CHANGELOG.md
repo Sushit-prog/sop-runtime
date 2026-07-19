@@ -4,6 +4,8 @@ All notable changes to SOPVM will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
 ## [0.2.0] - 2026-07-18
 
 ### Added

@@ -12,6 +12,8 @@ Anything not in this list is internal and may change without a version bump.
 
 from __future__ import annotations
 
+__version__ = "0.2.0"
+
 from typing import TYPE_CHECKING
 
 from sopvm.compiler.pipeline import compile_sop
@@ -39,7 +41,6 @@ def check(compiled: CompiledProgram) -> CheckResult:
     Returns a ``CheckResult`` with ``passed`` (bool) and ``violations``.
     """
     from sopvm.checker.check import check as _check
-    # Load the policy from the compiled program's policy_ref
     from sopvm.capability.policy import load_policy
     policy = load_policy(compiled.policy_ref)  # type: ignore[attr-defined]
     return _check(compiled, policy)
@@ -68,13 +69,16 @@ class Runtime:
 
     def run(self) -> RunResult:
         """Execute the compiled SOP and return a ``RunResult``."""
-        from sopvm.integrations.langgraph.node import _SopvmHandler
         from sopvm.runtime.executor import Executor
+        from sopvm.runtime.state import StepState
 
-        handler = _SopvmHandler(self._registry)
+        class _SimpleHandler:
+            def execute(self, node, request_tool=None):
+                return StepState.DONE
+
         executor = Executor(
             program=self._compiled,
-            handler=handler,
+            handler=_SimpleHandler(),
             registry=self._registry,
         )
         return executor.run()

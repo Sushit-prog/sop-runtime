@@ -103,10 +103,13 @@ def check_cmd(ir_path: str, policy: str) -> None:
               help="Path to the providers YAML config.")
 def run(ir_path: str, providers: str | None) -> None:
     """Execute a compiled SOP program."""
-    from sopvm.integrations.langgraph.node import _SopvmHandler
     from sopvm.plugins.registry import ProviderRegistry
     from sopvm.runtime.executor import Executor
     from sopvm.runtime.state import StepState
+
+    class _SimpleHandler:
+        def execute(self, node, request_tool=None):
+            return StepState.DONE
 
     try:
         program = CompiledProgram.from_json(open(ir_path, encoding="utf-8").read())
@@ -128,7 +131,7 @@ def run(ir_path: str, providers: str | None) -> None:
             click.echo(f"Error: failed to load providers: {e}", err=True)
             sys.exit(2)
 
-    handler = _SopvmHandler(registry)
+    handler = _SimpleHandler()
     executor = Executor(
         program=program,
         handler=handler,

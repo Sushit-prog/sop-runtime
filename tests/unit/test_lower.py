@@ -119,6 +119,6 @@ class TestJsonRoundTrip:
         json_str = prog.to_json()
         parsed = __import__("json").loads(json_str)
         # Top-level keys sorted
-        assert list(parsed.keys()) == ["entry", "ir_version", "nodes"]
+        assert list(parsed.keys()) == ["entry", "ir_version", "nodes", "policy_ref"]
         # Node keys sorted within the nodes dict
         assert list(parsed["nodes"].keys()) == ["a_step", "b_step"]

@@ -1,0 +1,1 @@
+{"ir_version": "0.1", "entry": "a", "nodes": {"a": {"capabilities_declared": ["payments:refund(max_amount=250.00)"], "capabilities_paged": ["payments:refund(max_amount=250.00)"], "edges": {}, "terminal": true}}}

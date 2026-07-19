@@ -1,0 +1,42 @@
+sop_version: "0.1"
+name: "data-export"
+policy: "policies/data-export.policy.yaml"
+
+steps:
+  - id: validate_request
+    description: "Validate export request and check authorization"
+    requires:
+      capabilities: ["db:read(users)", "db:read(authorization_rules)"]
+    on_success: query_data
+    on_failure: deny_request
+
+  - id: query_data
+    description: "Query the requested data from the warehouse"
+    requires:
+      capabilities: ["db:read(data_warehouse)"]
+    on_success: transform_data
+    on_failure: deny_request
+
+  - id: transform_data
+    description: "Apply transformations and anonymization"
+    requires:
+      capabilities: ["db:read(anonymization_rules)"]
+    on_success: export_file
+    on_failure: deny_request
+
+  - id: export_file
+    description: "Write export to secure storage"
+    requires:
+      capabilities: ["fs:write(export_bucket)"]
+    on_success: notify_requester
+    on_failure: deny_request
+
+  - id: notify_requester
+    terminal: true
+    requires:
+      capabilities: ["notify:email(requester)"]
+
+  - id: deny_request
+    terminal: true
+    requires:
+      capabilities: ["notify:email(requester)", "db:write(audit_log)"]

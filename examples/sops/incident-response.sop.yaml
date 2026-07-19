@@ -1,0 +1,54 @@
+sop_version: "0.1"
+name: "incident-response"
+policy: "policies/incident-response.policy.yaml"
+
+steps:
+  - id: detect_anomaly
+    description: "Monitor systems and detect anomalies"
+    requires:
+      capabilities: ["db:read(metrics)", "net:http(status_page)"]
+    on_success: classify_severity
+    on_failure: log_alert
+
+  - id: classify_severity
+    description: "Classify incident severity (P1-P4)"
+    requires:
+      capabilities: ["db:read(incident_rules)"]
+    on_success: notify_oncall
+    on_failure: escalate_management
+
+  - id: notify_oncall
+    description: "Notify on-call engineer via PagerDuty"
+    requires:
+      capabilities: ["notify:pagerduty(incident_id)"]
+    on_success: gather_diagnostics
+    on_failure: escalate_management
+
+  - id: gather_diagnostics
+    description: "Collect logs, metrics, and traces"
+    requires:
+      capabilities: ["db:read(logs)", "db:read(metrics)", "net:http(grafana_api)"]
+    on_success: create_ticket
+    on_failure: escalate_management
+
+  - id: create_ticket
+    description: "Create incident ticket in Jira"
+    requires:
+      capabilities: ["net:http(jira_api)", "db:write(incidents)"]
+    on_success: resolve
+    on_failure: escalate_management
+
+  - id: log_alert
+    terminal: true
+    requires:
+      capabilities: ["db:write(alerts)"]
+
+  - id: escalate_management
+    terminal: true
+    requires:
+      capabilities: ["notify:email(management)", "notify:slack(incident-channel)"]
+
+  - id: resolve
+    terminal: true
+    requires:
+      capabilities: ["db:write(incidents)", "notify:slack(incident-channel)"]

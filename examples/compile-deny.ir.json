@@ -1,0 +1,1 @@
+{"ir_version": "0.1", "entry": "a", "nodes": {"a": {"capabilities_declared": ["db:read(orders)"], "capabilities_paged": ["db:read(orders)"], "edges": {}, "terminal": true}}}

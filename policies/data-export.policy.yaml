@@ -1,0 +1,9 @@
+policy_version: "0.1"
+allowed_capabilities:
+  - "db:read(users)"
+  - "db:read(authorization_rules)"
+  - "db:read(data_warehouse)"
+  - "db:read(anonymization_rules)"
+  - "db:write(audit_log)"
+  - "fs:write(export_bucket)"
+  - "notify:email(requester)"

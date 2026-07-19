@@ -27,4 +27,11 @@ def compile_sop(sop_path: str, policy_path: str) -> CompiledProgram:
     doc = parse(sop_path)
     program = lower(doc)
     policy = load_policy(policy_path)
-    return apply_paging(program, policy)
+    result = apply_paging(program, policy)
+    # Store the policy path in the IR for later check() calls
+    return CompiledProgram(
+        ir_version=result.ir_version,
+        entry=result.entry,
+        nodes=result.nodes,
+        policy_ref=policy_path,
+    )
