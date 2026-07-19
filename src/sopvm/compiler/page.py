@@ -44,6 +44,9 @@ def apply_paging(program: CompiledProgram, policy: Policy) -> CompiledProgram:
             capabilities_paged=paged,
             edges=dict(node.edges),
             terminal=node.terminal,
+            condition=node.condition,
+            loop=node.loop,
+            on_limit=node.on_limit,
         )
 
     return CompiledProgram(

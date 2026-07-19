@@ -414,3 +414,107 @@ class TestCorruptMaxIterations:
         })
         with pytest.raises(ValueError, match="invalid max_iterations"):
             CompiledProgram.from_json(ir_json)
+
+
+class TestFullPipeline:
+    """Test that condition/loop/on_limit survive the full compile_sop pipeline.
+
+    Phase 1's TestConditionalLowering tests called lower() in isolation,
+    which missed the bug where apply_paging() dropped these fields.
+    This test exercises parse -> lower -> page to catch regressions.
+    """
+
+    def test_condition_survives_pipeline(self, tmp_path):
+        """Condition field survives parse -> lower -> page."""
+        from sopvm.compiler.pipeline import compile_sop
+
+        sop = tmp_path / "test.sop.yaml"
+        sop.write_text("""
+sop_version: "0.1"
+name: "test"
+policy: "p"
+steps:
+  - id: check
+    description: "Check something"
+    requires:
+      capabilities: ["db:read(x)"]
+    condition: "Is X true?"
+    on_success: "yes"
+    on_failure: "no"
+  - id: "yes"
+    terminal: true
+    requires:
+      capabilities: ["db:read(x)"]
+  - id: "no"
+    terminal: true
+    requires:
+      capabilities: ["db:read(x)"]
+""")
+        policy = tmp_path / "p.yaml"
+        policy.write_text('policy_version: "0.1"\nallowed_capabilities:\n  - "db:read(x)"\n')
+
+        prog = compile_sop(str(sop), str(policy))
+        node = prog.nodes["check"]
+        assert node.condition == "Is X true?"
+        assert node.edges == {"on_success": "yes", "on_failure": "no"}
+
+    def test_loop_survives_pipeline(self, tmp_path):
+        """Loop and on_limit survive parse -> lower -> page."""
+        from sopvm.compiler.pipeline import compile_sop
+
+        sop = tmp_path / "test.sop.yaml"
+        sop.write_text("""
+sop_version: "0.1"
+name: "test"
+policy: "p"
+steps:
+  - id: retry
+    description: "Retry"
+    requires:
+      capabilities: ["db:read(x)"]
+    condition: "Is it working?"
+    on_success: "done"
+    on_failure: "retry"
+    loop:
+      max_iterations: 3
+    on_limit: "failed"
+  - id: "done"
+    terminal: true
+    requires:
+      capabilities: ["db:read(x)"]
+  - id: "failed"
+    terminal: true
+    requires:
+      capabilities: ["db:read(x)"]
+""")
+        policy = tmp_path / "p.yaml"
+        policy.write_text('policy_version: "0.1"\nallowed_capabilities:\n  - "db:read(x)"\n')
+
+        prog = compile_sop(str(sop), str(policy))
+        node = prog.nodes["retry"]
+        assert node.loop is not None
+        assert node.loop.max_iterations == 3
+        assert node.on_limit == "failed"
+        assert node.condition == "Is it working?"
+
+    def test_order_processing_survives_pipeline(self):
+        """The order-processing example compiles with all conditional fields intact."""
+        from sopvm.compiler.pipeline import compile_sop
+
+        prog = compile_sop(
+            "examples/sops/order-processing.sop.yaml",
+            "policies/order-processing.policy.yaml",
+        )
+
+        # check_value has a condition
+        assert prog.nodes["check_value"].condition == "Is the order total greater than $100?"
+
+        # process_payment has a condition
+        assert prog.nodes["process_payment"].condition == "Did the payment succeed?"
+
+        # retry_payment has condition, loop, and on_limit
+        retry = prog.nodes["retry_payment"]
+        assert retry.condition == "Did the retry succeed?"
+        assert retry.loop is not None
+        assert retry.loop.max_iterations == 3
+        assert retry.on_limit == "payment_failed"

@@ -208,3 +208,57 @@ Added 5 tests in `tests/unit/test_conditional.py::TestCorruptMaxIterations` cove
 ### What it proves
 
 There are two trust boundaries for any serialized artifact: the schema (which validates at write time) and the deserializer (which validates at read time). The IR is written by the compiler and read by the runtime — but it can be edited between those two points by anyone. Validating only at write time (JSON Schema) is not enough. The deserializer is the second line of defense, and it needs to enforce the same invariants. This is the same principle as Incident 2 (IR tampering), applied to a different field.
+
+---
+
+## Incident 5: The Paging Pass Dropped Conditional Fields
+
+### Problem
+
+When Phase 1 added conditional branching and bounded loops to the SOP grammar (`condition`, `loop`, `on_limit` fields), the fields were correctly added to the AST, the lowerer, and the IR model. But the `apply_paging()` pass (M5) silently dropped them. When `compile_sop()` called `lower()` then `apply_paging()`, the resulting `CompiledProgram` had `condition=None` on every node — even though the AST had the fields and the lowerer copied them correctly.
+
+The result: conditional SOPs compiled successfully but the executor saw no conditions. All conditional steps returned DONE (no condition to evaluate), all loops had no max_iterations, and `on_limit` edges were lost. The demo ran through the wrong path and no tool calls happened.
+
+### How it was found
+
+The `run_db_demo.py` demo showed identical before/after database dumps — no `db:write` happened despite the SOP declaring one. Tracing the execution path revealed the condition step was treated as non-conditional (no `condition` field in the IR), so the handler always returned DONE, routing to the wrong branch.
+
+### Root cause
+
+The Phase 1 unit tests (`TestConditionalLowering`) tested `lower()` in isolation — they constructed `SopDocument` objects by hand and called `lower(doc)` directly. This proved the lowerer copies `condition`/`loop`/`on_limit` correctly. But no test exercised the full `compile_sop()` pipeline (`parse → lower → apply_paging`). The `apply_paging()` pass created new `IrNode` objects but only copied four fields:
+
+```python
+# page.py — BEFORE fix
+new_nodes[step_id] = IrNode(
+    capabilities_declared=list(node.capabilities_declared),
+    capabilities_paged=paged,
+    edges=dict(node.edges),
+    terminal=node.terminal,
+    # condition, loop, on_limit — MISSING
+)
+```
+
+The paging pass was written before conditional branching existed. When Phase 1 added new fields to `IrNode`, the paging pass was never updated to copy them. The unit tests for conditionals tested `lower()` but not `apply_paging()` — a classic coverage gap where each component was tested in isolation but not through the pipeline.
+
+### Fix
+
+Added the missing fields to `apply_paging()`:
+
+```python
+# page.py — AFTER fix
+new_nodes[step_id] = IrNode(
+    capabilities_declared=list(node.capabilities_declared),
+    capabilities_paged=paged,
+    edges=dict(node.edges),
+    terminal=node.terminal,
+    condition=node.condition,    # added
+    loop=node.loop,              # added
+    on_limit=node.on_limit,      # added
+)
+```
+
+Added `TestFullPipeline` in `tests/unit/test_conditional.py` with 3 tests that compile conditional/loop SOPs through the full `compile_sop()` pipeline (parse → lower → page) and assert the fields survive. These tests would have caught the bug before it shipped.
+
+### What it proves
+
+Unit testing each component in isolation is necessary but not sufficient. When a new feature adds fields that flow through multiple pipeline stages, every stage that creates new objects must be updated — and every stage must be tested through the full pipeline, not just in isolation. The `TestConditionalLowering` tests proved `lower()` works; the missing `TestFullPipeline` tests would have proved `apply_paging()` preserves the fields. The lesson: when adding fields that flow through a pipeline, add an end-to-end pipeline test that exercises the full path, not just the individual components.

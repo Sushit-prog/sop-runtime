@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/sopvm)](https://pypi.org/project/sopvm/)
 [![License](https://img.shields.io/pypi/l/sopvm)](https://github.com/Sushit-prog/sop-runtime/blob/main/LICENSE)
 
-**v0.3.0 — 15/15 milestones complete, conditional branching, local LLM handler, 253 tests passing.**
+**v0.4.0 — 15/15 milestones complete, conditional branching, SQLite provider, 268 tests passing.**
 
 A runtime layer beneath agent frameworks — not another one.
 
@@ -183,9 +183,10 @@ See [examples/adversarial_walkthrough.md](examples/adversarial_walkthrough.md) f
 ## Examples
 
 - [`examples/sops/`](examples/sops/) — example SOP YAML files (refund, incident response, order processing with branching)
-- [`examples/providers/`](examples/providers/) — reference tool provider implementations
+- [`examples/providers/`](examples/providers/) — reference tool providers: `sqlite_provider.py` (real SQLite), `mock_db.py`
 - [`examples/handlers/`](examples/handlers/) — local LLM StepHandler using llama.cpp (reference implementation)
 - [`examples/langgraph_integration.py`](examples/langgraph_integration.py) — LangGraph StateGraph wrapper
+- [`examples/run_db_demo.py`](examples/run_db_demo.py) — end-to-end demo with real SQLite reads/writes
 - [`examples/run_llm_demo.py`](examples/run_llm_demo.py) — end-to-end demo with local LLM
 - [`examples/adversarial_walkthrough.md`](examples/adversarial_walkthrough.md) — step-by-step escalation attempt with real CLI output
 
