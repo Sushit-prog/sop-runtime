@@ -1,5 +1,12 @@
 # SOPVM
 
+[![CI](https://github.com/Sushit-prog/sop-runtime/actions/workflows/adversarial.yml/badge.svg)](https://github.com/Sushit-prog/sop-runtime/actions/workflows/adversarial.yml)
+[![PyPI](https://img.shields.io/pypi/v/sopvm)](https://pypi.org/project/sopvm/)
+[![Python](https://img.shields.io/pypi/pyversions/sopvm)](https://pypi.org/project/sopvm/)
+[![License](https://img.shields.io/pypi/l/sopvm)](https://github.com/Sushit-prog/sop-runtime/blob/main/LICENSE)
+
+**v0.2.0 — published on PyPI, 15/15 milestones complete, 229 tests passing.**
+
 **A runtime layer beneath agent frameworks — not another one.**
 
 SOPVM compiles Standard Operating Procedures into executable programs and runs them on a capability-gated stack machine. It sits *underneath* LangGraph, CrewAI, or any tool-calling loop — the same way LLVM sits underneath Clang, Rust, and Swift rather than competing with any single language.
@@ -10,11 +17,51 @@ Most "follow the SOP" approaches today mean "paste the SOP text into a system pr
 
 ## Quickstart
 
+### From PyPI
+
 ```bash
-# Install
+pip install sopvm
+```
+
+Create a minimal SOP (`hello.sop.yaml`):
+
+```yaml
+sop_version: "0.1"
+name: "hello"
+policy: "policy.yaml"
+
+steps:
+  - id: greet
+    description: "Say hello"
+    terminal: true
+    requires:
+      capabilities: ["db:read(greetings)"]
+```
+
+Create a policy (`policy.yaml`):
+
+```yaml
+policy_version: "0.1"
+allowed_capabilities:
+  - "db:read(greetings)"
+```
+
+Then compile, check, and run:
+
+```bash
+sopvm compile hello.sop.yaml --policy policy.yaml -o hello.ir.json
+sopvm check hello.ir.json --policy policy.yaml
+sopvm run hello.ir.json
+```
+
+### From source
+
+```bash
+git clone https://github.com/Sushit-prog/sop-runtime.git
+cd sop-runtime
 pip install -e ".[dev]"
 
-# Compile a SOP against a policy
+# Compile the example SOP
 sopvm compile examples/sops/refund-request-handling.sop.yaml \
     --policy policies/support-agent.policy.yaml \
     -o compiled.ir.json
@@ -28,31 +75,18 @@ sopvm check compiled.ir.json --policy policies/support-agent.policy.yaml
 sopvm run compiled.ir.json
 ```
 
-### Example: compile and check
+### Example output
 
 ```
-$ sopvm compile tests/fixtures/refund-request-handling.sop.yaml \
-    --policy policies/support-agent.policy.yaml \
-    -o compiled.ir.json
-Compiled to compiled.ir.json
+$ sopvm compile hello.sop.yaml --policy policy.yaml -o hello.ir.json
+Compiled to hello.ir.json
 
-$ sopvm check compiled.ir.json --policy policies/support-agent.policy.yaml
+$ sopvm check hello.ir.json --policy policy.yaml
 All capabilities within policy.
-```
 
-### Example: policy violation caught at check time
-
-```
-$ sopvm check violating.ir.json --policy policies/support-agent.policy.yaml
-VIOLATION step=a requested='payments:refund(max_amount=250.00)' reason=exceeds policy ceiling payments:refund(max_amount<=100.00)
-```
-
-### Example: runtime execution
-
-```
-$ sopvm run compiled.ir.json
+$ sopvm run hello.ir.json
 Final state: DONE
-Path: verify_identity -> check_eligibility -> issue_refund -> notify_user
+Path: greet
 ```
 
 ## Architecture
