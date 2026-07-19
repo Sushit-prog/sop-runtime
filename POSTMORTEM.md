@@ -160,3 +160,51 @@ The fix also fixed the underlying code: both `__init__.py` and `cli/main.py` wer
 ### What it proves
 
 A regression-prevention test can have a real gap in its own detection logic. The test existed, passed, and looked correct — but its detection predicate was narrower than the failure mode it was supposed to prevent. The way to find this is not to trust that the test exists, but to verify the test against the exact failure mode: "if I introduce a langgraph import through *this specific path*, does the test catch it?" The M15 clean-venv verification was the actual safety net, not the test. The lesson: tests are code, and code has bugs — including the tests that are supposed to catch bugs.
+
+---
+
+## Incident 4: The max_iterations Validation Gap
+
+### Problem
+
+When M16 added conditional branching and bounded loops to the SOP grammar, `CompiledProgram.from_json()` accepted `max_iterations` from the IR JSON without validation. The IR JSON Schema validates `max_iterations` as `integer` at parse time, but `from_json()` is pure deserialization — it trusts whatever the JSON contains.
+
+If someone hand-edited the IR and set `max_iterations` to a string (`"abc"`), a float (`3.5`), `None`, zero, or a negative number, the executor would crash with a `TypeError` at runtime:
+
+```python
+# executor.py line 286
+if count >= node.loop.max_iterations:  # TypeError: '>=' not supported between 'int' and 'str'
+```
+
+This is a different failure mode than the IR tampering gap (Incident 2). That gap was about *semantic* correctness — paged capabilities widened beyond policy. This gap is about *structural* correctness — a field that should be a positive integer but isn't.
+
+### How it was found
+
+A code review question: "could a node with a missing or corrupted max_iterations hang the runtime?" The answer was: it wouldn't hang (the `max_steps` safety limit catches infinite loops), but it would crash with a raw `TypeError` instead of a clean error message. The executor's defensive `max_steps` check prevents a true hang, but the failure mode is still ugly.
+
+### Root cause
+
+The IR deserialization path (`CompiledProgram.from_json()`) was written as a direct映射 from JSON keys to dataclass fields, with no type validation beyond what Python's dataclass constructor enforces. The JSON Schema validates at parse time, but the IR is a serialized artifact that can be hand-edited. The `from_json()` method is the second trust boundary — it should validate structural invariants before the executor ever sees the data.
+
+### Fix
+
+Added validation in `CompiledProgram.from_json()` (`src/sopvm/ir/model.py`):
+
+```python
+if v.get("loop"):
+    max_iter = v["loop"].get("max_iterations")
+    if not isinstance(max_iter, int) or max_iter < 1:
+        raise ValueError(
+            f"invalid max_iterations for step {k!r}: "
+            f"expected positive integer, got {max_iter!r}"
+        )
+    loop = IrLoop(max_iterations=max_iter)
+```
+
+This catches all corrupt values (string, float, None, zero, negative) at deserialization time with a clear error message, not a cryptic `TypeError` at execution time.
+
+Added 5 tests in `tests/unit/test_conditional.py::TestCorruptMaxIterations` covering string, float, None, zero, and negative values.
+
+### What it proves
+
+There are two trust boundaries for any serialized artifact: the schema (which validates at write time) and the deserializer (which validates at read time). The IR is written by the compiler and read by the runtime — but it can be edited between those two points by anyone. Validating only at write time (JSON Schema) is not enough. The deserializer is the second line of defense, and it needs to enforce the same invariants. This is the same principle as Incident 2 (IR tampering), applied to a different field.

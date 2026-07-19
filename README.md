@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/sopvm)](https://pypi.org/project/sopvm/)
 [![License](https://img.shields.io/pypi/l/sopvm)](https://github.com/Sushit-prog/sop-runtime/blob/main/LICENSE)
 
-**v0.2.0 — published on PyPI, 15/15 milestones complete, 229 tests passing.**
+**v0.3.0 — 15/15 milestones complete, conditional branching, local LLM handler, 253 tests passing.**
 
 A runtime layer beneath agent frameworks — not another one.
 
@@ -18,12 +18,14 @@ Most "follow the SOP" approaches today mean "paste the SOP text into a system pr
 ## Features
 
 - **Deterministic compilation** — same SOP + policy always produces the same IR. No LLM calls, no randomness, no side effects.
+- **Conditional branching** — `condition` field with `on_success`/`on_failure` edges, plus bounded loops with `max_iterations` and `on_limit`.
 - **Capability-gated execution** — every tool call is checked against a policy ceiling before invocation. Denied calls are terminal facts, not retryable failures.
 - **Static policy checking** — `sopvm check` validates capabilities at compile time, usable as a pre-commit hook (exit 1 on violations).
 - **Provider sandbox** — providers that invoke capabilities beyond their declared scope are caught at runtime, independent of the SOP-level gate.
 - **Telemetry** — every state transition and gate decision is emitted to an append-only JSONL trace. Broken sinks degrade silently, never crash the run.
 - **Adversarial test suite** — 25+ escalation techniques tested in CI: ceiling bypass, namespace escalation, Unicode homoglyphs, IR tampering, provider lying.
 - **LangGraph integration** — wrap any compiled SOP as a StateGraph node with one function call.
+- **Local LLM handler** — reference StepHandler using llama.cpp for local inference (no paid API, no GPU required).
 
 ## Quickstart
 
@@ -180,9 +182,11 @@ See [examples/adversarial_walkthrough.md](examples/adversarial_walkthrough.md) f
 
 ## Examples
 
-- [`examples/sops/`](examples/sops/) — example SOP YAML files
+- [`examples/sops/`](examples/sops/) — example SOP YAML files (refund, incident response, order processing with branching)
 - [`examples/providers/`](examples/providers/) — reference tool provider implementations
+- [`examples/handlers/`](examples/handlers/) — local LLM StepHandler using llama.cpp (reference implementation)
 - [`examples/langgraph_integration.py`](examples/langgraph_integration.py) — LangGraph StateGraph wrapper
+- [`examples/run_llm_demo.py`](examples/run_llm_demo.py) — end-to-end demo with local LLM
 - [`examples/adversarial_walkthrough.md`](examples/adversarial_walkthrough.md) — step-by-step escalation attempt with real CLI output
 
 ## Contributing
