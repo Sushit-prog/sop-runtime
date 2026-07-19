@@ -12,7 +12,7 @@ Anything not in this list is internal and may change without a version bump.
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 
 from typing import TYPE_CHECKING
 
