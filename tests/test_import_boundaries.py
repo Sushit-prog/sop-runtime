@@ -26,8 +26,12 @@ def _get_python_files() -> list[Path]:
 def _has_langgraph_import(filepath: Path) -> list[str]:
     """Parse a Python file's AST and return any langgraph import lines.
 
-    Returns a list of strings describing the import (e.g. "import langgraph"
-    or "from langgraph.graph import StateGraph").
+    Catches both direct imports (``import langgraph``) and indirect
+    imports through the allowlisted module path
+    (``from sopvm.integrations.langgraph.node import ...``), since
+    those trigger the langgraph import chain.
+
+    Returns a list of strings describing the import.
     """
     try:
         tree = ast.parse(filepath.read_text(encoding="utf-8"), filename=str(filepath))
@@ -41,7 +45,7 @@ def _has_langgraph_import(filepath: Path) -> list[str]:
                 if alias.name.startswith("langgraph"):
                     imports.append(f"import {alias.name}")
         elif isinstance(node, ast.ImportFrom):
-            if node.module and node.module.startswith("langgraph"):
+            if node.module and ("langgraph" in node.module.split(".")):
                 imports.append(f"from {node.module} import ...")
     return imports
 

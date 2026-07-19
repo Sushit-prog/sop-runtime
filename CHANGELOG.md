@@ -8,6 +8,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [0.2.0] - 2026-07-18
 
+> **Versioning note:** Per pre-1.0 SemVer convention, MINOR bumps (0.x)
+> may signal breaking changes. This release replaces the M1 public API
+> (`compile_check()`, Markdown input, argparse CLI) with the M2-M13
+> public API (`compile()`, `check()`, `Runtime`, YAML input, click CLI).
+> See VERSIONING_POLICY.md for details.
+
 ### Added
 - **M2**: SOP YAML parser with JSON Schema validation and semantic checks
 - **M3**: AST→IR lowering pass (`CompiledProgram`, `IrNode`)

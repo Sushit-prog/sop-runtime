@@ -14,5 +14,9 @@
     "compiled",
     "providers"
   ],
-  "run": []
+  "run": [],
+  "execute": [
+    "node",
+    "request_tool"
+  ]
 }
