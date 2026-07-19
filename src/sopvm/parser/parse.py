@@ -14,7 +14,7 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft7Validator
 
-from .ast import CapabilityRequest, SopDocument, StepNode
+from .ast import CapabilityRequest, LoopConfig, SopDocument, StepNode
 from .errors import SchemaValidationError, SemanticError
 
 _CAPABILITY_RE = re.compile(
@@ -29,6 +29,13 @@ def _load_schema() -> dict:
     global _schema
     if _schema is None:
         _schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    return _schema
+
+
+def _reload_schema() -> dict:
+    """Force reload the schema (for testing after schema changes)."""
+    global _schema
+    _schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
     return _schema
 
 
@@ -86,12 +93,20 @@ def parse(path: str | Path) -> SopDocument:
 
 def _build_step(raw: dict) -> StepNode:
     caps = tuple(CapabilityRequest(raw=c) for c in raw["requires"]["capabilities"])
+
+    loop = None
+    if "loop" in raw:
+        loop = LoopConfig(max_iterations=raw["loop"]["max_iterations"])
+
     return StepNode(
         id=raw["id"],
         description=raw.get("description"),
         requires=caps,
         edges=(raw.get("on_success"), raw.get("on_failure")),
         terminal=raw.get("terminal", False),
+        condition=raw.get("condition"),
+        loop=loop,
+        on_limit=raw.get("on_limit"),
     )
 
 
@@ -112,6 +127,13 @@ def _check_edges(doc: SopDocument) -> None:
                     f"step '{step.id}' references unknown target '{target}'",
                     step_id=step.id,
                 )
+        # Validate loop edges
+        if step.loop is not None and step.on_limit is not None:
+            if step.on_limit not in ids:
+                raise SemanticError(
+                    f"step '{step.id}' references unknown on_limit target '{step.on_limit}'",
+                    step_id=step.id,
+                )
 
 
 def _check_reachability(doc: SopDocument) -> None:
@@ -123,6 +145,9 @@ def _check_reachability(doc: SopDocument) -> None:
         for t in s.edges:
             if t is not None:
                 edges[s.id].add(t)
+        # Include on_limit as an edge for reachability
+        if s.on_limit is not None:
+            edges[s.id].add(s.on_limit)
 
     entry = doc.steps[0].id
     visited: set[str] = set()

@@ -37,6 +37,25 @@ steps:
     on_success: notify_user
     on_failure: escalate_human
 
+  - id: check_order_value
+    description: "Check if order value exceeds $100"
+    requires:
+      capabilities: ["db:read(orders)"]
+    condition: "Is the order value greater than $100?"
+    on_success: high_value_approval
+    on_failure: auto_approve
+
+  - id: retry_api_check
+    description: "Check if API is responding"
+    requires:
+      capabilities: ["net:http(health_check)"]
+    condition: "Is the API responding with status 200?"
+    on_success: api_ok
+    on_failure: retry_api_check
+    loop:
+      max_iterations: 3
+    on_limit: api_failed
+
   - id: notify_user
     terminal: true
     requires:
@@ -70,7 +89,11 @@ SopDocument
      ├── description: str
      ├── requires: CapabilityRequest[]
      ├── edges: {on_success: str|None, on_failure: str|None}
-     └── terminal: bool
+     ├── terminal: bool
+     ├── condition: str|None          # natural language condition to evaluate
+     ├── loop: LoopConfig|None        # bounded loop configuration
+     │    └── max_iterations: int
+     └── on_limit: str|None           # edge to follow when loop limit hit
 ```
 
 ---
@@ -140,6 +163,22 @@ This must be checkable **without running the runtime** — pure static analysis,
       "capabilities_paged": ["db:read(orders)"],
       "edges": { "on_success": "check_eligibility", "on_failure": "escalate_human" },
       "terminal": false
+    },
+    "check_order_value": {
+      "capabilities_declared": ["db:read(orders)"],
+      "capabilities_paged": ["db:read(orders)"],
+      "edges": { "on_success": "high_value_approval", "on_failure": "auto_approve" },
+      "terminal": false,
+      "condition": "Is the order value greater than $100?"
+    },
+    "retry_api_check": {
+      "capabilities_declared": ["net:http(health_check)"],
+      "capabilities_paged": ["net:http(health_check)"],
+      "edges": { "on_success": "api_ok", "on_failure": "retry_api_check" },
+      "terminal": false,
+      "condition": "Is the API responding with status 200?",
+      "loop": { "max_iterations": 3 },
+      "on_limit": "api_failed"
     }
   }
 }

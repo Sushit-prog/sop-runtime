@@ -1,0 +1,79 @@
+sop_version: "0.1"
+name: "order-processing"
+policy: "policies/order-processing.policy.yaml"
+
+steps:
+  - id: receive_order
+    description: "Receive and validate the incoming order"
+    requires:
+      capabilities: ["db:read(orders)"]
+    on_success: check_value
+    on_failure: reject_order
+
+  - id: check_value
+    description: "Check if order value exceeds $100"
+    requires:
+      capabilities: ["db:read(orders)"]
+    condition: "Is the order total greater than $100?"
+    on_success: high_value_review
+    on_failure: auto_approve
+
+  - id: high_value_review
+    description: "Route to manager for high-value approval"
+    requires:
+      capabilities: ["notify:slack(management)"]
+    on_success: process_payment
+    on_failure: reject_order
+
+  - id: auto_approve
+    description: "Auto-approve orders under $100"
+    requires:
+      capabilities: ["db:write(orders)"]
+    on_success: process_payment
+    on_failure: reject_order
+
+  - id: process_payment
+    description: "Process payment via payment provider"
+    requires:
+      capabilities: ["payments:refund(max_amount=500.00)"]
+    condition: "Did the payment succeed?"
+    on_success: ship_order
+    on_failure: retry_payment
+
+  - id: retry_payment
+    description: "Retry payment processing"
+    requires:
+      capabilities: ["payments:refund(max_amount=500.00)"]
+    condition: "Did the retry succeed?"
+    on_success: ship_order
+    on_failure: retry_payment
+    loop:
+      max_iterations: 3
+    on_limit: payment_failed
+
+  - id: ship_order
+    description: "Ship the order to the customer"
+    requires:
+      capabilities: ["net:http(shipping_api)"]
+    on_success: notify_customer
+    on_failure: escalate
+
+  - id: notify_customer
+    terminal: true
+    requires:
+      capabilities: ["notify:email(customer)"]
+
+  - id: reject_order
+    terminal: true
+    requires:
+      capabilities: ["notify:email(customer)"]
+
+  - id: payment_failed
+    terminal: true
+    requires:
+      capabilities: ["notify:email(customer)", "notify:slack(support)"]
+
+  - id: escalate
+    terminal: true
+    requires:
+      capabilities: ["notify:slack(escalation)"]

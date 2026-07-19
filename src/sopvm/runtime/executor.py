@@ -107,6 +107,7 @@ class Executor:
         self._max_steps = max_steps
         self._gate = CapabilityGate()
         self._current_violation: Violation | None = None
+        self._loop_counts: dict[str, int] = {}  # tracks iterations per looping step
 
     def _emit(self, event_type: EventType | str, step_id: str = "",
               extra: dict[str, object] | None = None) -> None:
@@ -278,6 +279,22 @@ class Executor:
                                  run_id=self._run_id)
 
             # Non-terminal step: follow edge based on handler result
+            # Check for bounded loop
+            if node.loop is not None:
+                count = self._loop_counts.get(current_id, 0) + 1
+                self._loop_counts[current_id] = count
+                if count >= node.loop.max_iterations:
+                    # Loop limit hit — follow on_limit edge
+                    if node.on_limit is not None:
+                        current_id = node.on_limit
+                        continue
+                    else:
+                        raise ExecutorError(
+                            f"step {current_id!r} loop exceeded "
+                            f"max_iterations={node.loop.max_iterations} "
+                            f"but has no on_limit edge"
+                        )
+
             edge_key = "on_success" if result == StepState.DONE else "on_failure"
             next_id = node.edges.get(edge_key)
             if next_id is None:

@@ -27,6 +27,18 @@ class CapabilityRequest:
 
 
 @dataclass(frozen=True)
+class LoopConfig:
+    """Bounded loop configuration for a step.
+
+    Attributes:
+        max_iterations: Maximum number of iterations before the loop
+            terminates and follows the on_limit edge.
+    """
+
+    max_iterations: int
+
+
+@dataclass(frozen=True)
 class StepNode:
     """A single step in the SOP graph.
 
@@ -37,6 +49,12 @@ class StepNode:
         edges: ``(on_success, on_failure)`` — each is a target step id
             or ``None``. Both may be ``None`` only when ``terminal`` is True.
         terminal: Whether this step is a terminal (end) step.
+        condition: Natural language condition to evaluate. If present,
+            the handler evaluates it and returns DONE (true) or FAILED
+            (false), which determines which edge to follow.
+        loop: Bounded loop configuration. If present, the step repeats
+            until the condition is false or max_iterations is hit.
+        on_limit: Target step id when loop max_iterations is exceeded.
     """
 
     id: str
@@ -44,6 +62,9 @@ class StepNode:
     requires: tuple[CapabilityRequest, ...]
     edges: tuple[str | None, str | None]  # (on_success, on_failure)
     terminal: bool
+    condition: str | None = None
+    loop: LoopConfig | None = None
+    on_limit: str | None = None
 
 
 @dataclass(frozen=True)

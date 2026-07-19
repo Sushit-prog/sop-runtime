@@ -56,20 +56,42 @@
               }
             }
           },
+          "condition": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Natural language condition to evaluate. If present, the handler evaluates it and returns DONE (true) or FAILED (false)."
+          },
           "on_success": {
             "type": "string",
             "minLength": 1,
-            "description": "Target step id on success."
+            "description": "Target step id on success (or when condition is true)."
           },
           "on_failure": {
             "type": "string",
             "minLength": 1,
-            "description": "Target step id on failure."
+            "description": "Target step id on failure (or when condition is false)."
           },
           "terminal": {
             "type": "boolean",
             "default": false,
             "description": "Whether this is a terminal (end) step."
+          },
+          "loop": {
+            "type": "object",
+            "description": "Bounded loop configuration. Step repeats until condition is false or max_iterations is hit.",
+            "additionalProperties": false,
+            "properties": {
+              "max_iterations": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum number of iterations before following on_limit edge."
+              }
+            }
+          },
+          "on_limit": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Target step id when loop max_iterations is exceeded."
           }
         }
       }

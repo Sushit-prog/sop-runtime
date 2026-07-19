@@ -10,7 +10,7 @@ placeholder. M5 replaces it with the real policy-resolved subset.
 
 from __future__ import annotations
 
-from sopvm.ir.model import CompiledProgram, IrNode
+from sopvm.ir.model import CompiledProgram, IrLoop, IrNode
 from sopvm.parser.ast import SopDocument
 
 from .errors import LoweringError
@@ -41,17 +41,25 @@ def lower(doc: SopDocument) -> CompiledProgram:
 
         caps = [c.raw for c in step.requires]
         edges = {}
-        on_ok, on_err = step.edges
-        if on_ok is not None:
-            edges["on_success"] = on_ok
-        if on_err is not None:
-            edges["on_failure"] = on_err
+        if step.edges:
+            on_ok, on_err = step.edges
+            if on_ok is not None:
+                edges["on_success"] = on_ok
+            if on_err is not None:
+                edges["on_failure"] = on_err
+
+        loop = None
+        if step.loop is not None:
+            loop = IrLoop(max_iterations=step.loop.max_iterations)
 
         nodes[step.id] = IrNode(
             capabilities_declared=caps,
             capabilities_paged=list(caps),  # M5 placeholder
             edges=edges,
             terminal=step.terminal,
+            condition=step.condition,
+            loop=loop,
+            on_limit=step.on_limit,
         )
 
     return CompiledProgram(

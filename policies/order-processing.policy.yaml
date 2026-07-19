@@ -1,0 +1,10 @@
+policy_version: "0.1"
+allowed_capabilities:
+  - "db:read(orders)"
+  - "db:write(orders)"
+  - "payments:refund(max_amount<=500.00)"
+  - "notify:email(customer)"
+  - "notify:slack(management)"
+  - "notify:slack(support)"
+  - "notify:slack(escalation)"
+  - "net:http(shipping_api)"

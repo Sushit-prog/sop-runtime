@@ -26,6 +26,9 @@ dev = [
 langgraph = [
     "langgraph>=0.2.0",
 ]
+llm-demo = [
+    "llama-cpp-python>=0.3.0",
+]
 
 [project.scripts]
 sopvm = "sopvm.cli.main:main"
