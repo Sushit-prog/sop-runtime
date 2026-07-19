@@ -11,14 +11,11 @@ Per INTERFACES.md §10:
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Callable
 
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.state import CompiledStateGraph
 
-from sopvm.capability.token import parse_capability
 from sopvm.ir.model import CompiledProgram
-from sopvm.plugins.base import ToolProvider, ToolResult
+from sopvm.plugins.base import ToolProvider
 from sopvm.plugins.registry import ProviderRegistry
 from sopvm.runtime.executor import Executor, RunResult
 from sopvm.runtime.state import StepState

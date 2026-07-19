@@ -1,7 +1,6 @@
 """Property-based tests for apply_paging."""
 
 import hypothesis.strategies as st
-import pytest
 from hypothesis import given, settings
 
 from sopvm.capability.policy import Policy

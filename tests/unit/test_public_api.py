@@ -1,6 +1,5 @@
 """Tests for M13: Public API, IR version check, API compat."""
 
-import json
 import pytest
 
 from sopvm.ir.model import CompiledProgram, IrNode

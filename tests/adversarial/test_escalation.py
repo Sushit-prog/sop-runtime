@@ -4,7 +4,6 @@ Each test case represents a specific escalation technique an attacker
 (or a confused SOP author) might use to exceed a policy ceiling.
 """
 
-import pytest
 
 from sopvm.capability.policy import Policy
 from sopvm.capability.token import parse_capability

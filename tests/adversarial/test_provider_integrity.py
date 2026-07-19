@@ -7,10 +7,11 @@ sandbox would still catch a lying provider.
 
 from typing import Callable
 
+import pytest
+
 from sopvm.capability.token import CapabilityToken, parse_capability
 from sopvm.ir.model import CompiledProgram, IrNode
 from sopvm.plugins.base import ToolResult
-from sopvm.plugins.registry import ProviderRegistry
 from sopvm.plugins.sandbox import ProviderIntegrityViolation, wrap_provider
 from sopvm.runtime.executor import Executor
 from sopvm.runtime.state import StepState
@@ -104,6 +105,3 @@ def test_provider_within_scope_not_sandbox_denied():
     result = sandboxed.invoke(cap, {})
     assert result.success is True
     assert result.data == {"rows": [1, 2, 3]}
-
-
-import pytest

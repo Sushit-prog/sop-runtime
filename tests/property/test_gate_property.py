@@ -52,7 +52,7 @@ def test_gate_approve_implies_paged_subset(step_id, paged_caps, request_cap):
 
     requested = parse_capability(request_cap)
     handler = GateTestHandler(requested)
-    result = Executor(prog, handler).run()
+    Executor(prog, handler).run()
 
     if handler.approved:
         # Gate approved — the capability must satisfy at least one paged entry
@@ -84,7 +84,7 @@ def test_gate_deny_implies_not_paged(step_id, paged_caps, request_cap):
 
     requested = parse_capability(request_cap)
     handler = GateTestHandler(requested)
-    result = Executor(prog, handler).run()
+    Executor(prog, handler).run()
 
     if not handler.approved:
         # Gate denied — the capability must not satisfy any paged entry

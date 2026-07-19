@@ -3,7 +3,7 @@
 import pytest
 
 from sopvm.compiler import LoweringError, lower
-from sopvm.ir.model import CompiledProgram, IrNode
+from sopvm.ir.model import CompiledProgram
 from sopvm.parser.ast import CapabilityRequest, SopDocument, StepNode
 
 

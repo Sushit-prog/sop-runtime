@@ -20,10 +20,9 @@ from sopvm.ir.model import CompiledProgram, IrNode
 from sopvm.plugins.base import ToolResult
 from sopvm.plugins.registry import ProviderRegistry
 from sopvm.plugins.sandbox import wrap_provider
-from sopvm.telemetry.events import Event, EventType, new_event
+from sopvm.telemetry.events import EventType, new_event
 from sopvm.telemetry.sink import TelemetrySink
 
-from .events import noop_event
 from .gate import CapabilityGate
 from .state import StepState
 from .violations import Violation
@@ -93,7 +92,7 @@ class Executor:
         self,
         program: CompiledProgram,
         handler: StepHandler,
-        on_event: Callable[[Event], None] = noop_event,
+        on_event: Callable[..., None] | None = None,
         registry: ProviderRegistry | None = None,
         sink: TelemetrySink | None = None,
         policy=None,
@@ -101,7 +100,7 @@ class Executor:
     ) -> None:
         self._program = program
         self._handler = handler
-        self._on_event = on_event
+        self._on_event = on_event or (lambda e: None)
         self._registry = registry
         self._sink = sink
         self._policy = policy

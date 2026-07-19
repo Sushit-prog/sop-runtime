@@ -1,6 +1,5 @@
 """Schema validation edge-case tests."""
 
-import json
 from pathlib import Path
 
 import pytest

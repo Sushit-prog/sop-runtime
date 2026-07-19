@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import hypothesis.strategies as st
-import pytest
 from hypothesis import given, settings
 
 from sopvm.compiler import lower

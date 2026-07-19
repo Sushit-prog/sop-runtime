@@ -12,7 +12,6 @@ zero langgraph installed.
 import ast
 from pathlib import Path
 
-import pytest
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src" / "sopvm"
 LANGGRAPH_ALLOWLIST = SRC_ROOT / "integrations" / "langgraph"

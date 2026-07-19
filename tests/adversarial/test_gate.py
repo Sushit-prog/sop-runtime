@@ -9,7 +9,7 @@ from typing import Callable
 from sopvm.capability.token import CapabilityToken, parse_capability
 from sopvm.ir.model import CompiledProgram, IrNode
 from sopvm.plugins.base import ToolResult
-from sopvm.runtime.executor import Executor, RunResult
+from sopvm.runtime.executor import Executor
 from sopvm.runtime.state import StepState
 
 

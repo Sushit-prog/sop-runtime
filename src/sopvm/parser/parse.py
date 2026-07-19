@@ -12,10 +12,10 @@ import re
 from pathlib import Path
 
 import yaml
-from jsonschema import Draft7Validator, ValidationError
+from jsonschema import Draft7Validator
 
 from .ast import CapabilityRequest, SopDocument, StepNode
-from .errors import ParseError, SchemaValidationError, SemanticError
+from .errors import SchemaValidationError, SemanticError
 
 _CAPABILITY_RE = re.compile(
     r"^[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*(?:\(.*\))?$"

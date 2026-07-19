@@ -1,10 +1,9 @@
 """Unit tests for the static capability checker."""
 
-import pytest
 
 from sopvm.capability.token import parse_capability
 from sopvm.capability.policy import Policy
-from sopvm.checker.check import CheckResult, Violation, check, satisfies
+from sopvm.checker.check import check, satisfies
 
 
 class TestSatisfies:

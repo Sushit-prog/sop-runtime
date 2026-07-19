@@ -7,7 +7,7 @@ from hypothesis import given, settings
 
 from sopvm.capability.token import CapabilityToken
 from sopvm.ir.model import CompiledProgram, IrNode
-from sopvm.runtime.executor import Executor, ExecutorError
+from sopvm.runtime.executor import Executor
 from sopvm.runtime.state import StepState
 
 

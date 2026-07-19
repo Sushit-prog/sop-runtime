@@ -6,7 +6,7 @@ This becomes the function the CLI (M11) and public API (M13) invoke.
 
 from __future__ import annotations
 
-from sopvm.capability.policy import Policy, load_policy
+from sopvm.capability.policy import load_policy
 from sopvm.ir.model import CompiledProgram
 from sopvm.parser import parse
 

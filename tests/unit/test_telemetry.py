@@ -1,8 +1,6 @@
 """Unit tests for telemetry events and sinks."""
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 

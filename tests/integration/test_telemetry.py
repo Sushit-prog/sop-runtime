@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from sopvm.compiler.pipeline import compile_sop
-from sopvm.runtime.executor import Executor, RunResult
+from sopvm.runtime.executor import Executor
 from sopvm.runtime.state import StepState
 from sopvm.telemetry.events import EventType
 from sopvm.telemetry.sink import InMemorySink

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from sopvm.capability.policy import Policy, PolicyError, load_policy
+from sopvm.capability.policy import PolicyError, load_policy
 
 
 def _write_policy(tmp_path: Path, content: str) -> Path:

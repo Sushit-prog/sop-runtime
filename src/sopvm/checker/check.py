@@ -89,9 +89,9 @@ def satisfies(requested: CapabilityToken, allowed: CapabilityToken) -> bool:
 
 
 def _compare(
-    requested: str | float,
-    op: str,
-    ceiling: str | float,
+    requested: object,
+    op: object,
+    ceiling: object,
 ) -> bool:
     """Evaluate a single comparator constraint."""
     req = _to_float(requested)
@@ -115,11 +115,11 @@ def _compare(
     return False
 
 
-def _to_float(v: str | float) -> float | None:
+def _to_float(v: object) -> float | None:
     if isinstance(v, (int, float)):
         return float(v)
     try:
-        return float(v)
+        return float(v)  # type: ignore[arg-type]
     except (ValueError, TypeError):
         return None
 

@@ -4,7 +4,6 @@ import pytest
 
 from sopvm.capability.token import (
     CapabilityGrammarError,
-    CapabilityToken,
     parse_capability,
 )
 

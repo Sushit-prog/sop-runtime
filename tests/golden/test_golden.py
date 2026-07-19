@@ -1,7 +1,6 @@
 """Golden-file tests: AST JSON snapshot comparison."""
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 import pytest
