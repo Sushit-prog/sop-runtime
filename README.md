@@ -7,13 +7,23 @@
 
 **v0.2.0 — published on PyPI, 15/15 milestones complete, 229 tests passing.**
 
-**A runtime layer beneath agent frameworks — not another one.**
+A runtime layer beneath agent frameworks — not another one.
 
 SOPVM compiles Standard Operating Procedures into executable programs and runs them on a capability-gated stack machine. It sits *underneath* LangGraph, CrewAI, or any tool-calling loop — the same way LLVM sits underneath Clang, Rust, and Swift rather than competing with any single language.
 
 ## Why Compilation Matters
 
 Most "follow the SOP" approaches today mean "paste the SOP text into a system prompt and hope." The LLM re-plans every step, inconsistently. SOPVM compiles the SOP once into a deterministic, auditable program. The LLM only does the semantic work (interpreting what a step means); the runtime handles state tracking, capability enforcement, and execution flow. This is measurably better — the research paper behind SOPVM shows up to 16-point accuracy gains over raw prose.
+
+## Features
+
+- **Deterministic compilation** — same SOP + policy always produces the same IR. No LLM calls, no randomness, no side effects.
+- **Capability-gated execution** — every tool call is checked against a policy ceiling before invocation. Denied calls are terminal facts, not retryable failures.
+- **Static policy checking** — `sopvm check` validates capabilities at compile time, usable as a pre-commit hook (exit 1 on violations).
+- **Provider sandbox** — providers that invoke capabilities beyond their declared scope are caught at runtime, independent of the SOP-level gate.
+- **Telemetry** — every state transition and gate decision is emitted to an append-only JSONL trace. Broken sinks degrade silently, never crash the run.
+- **Adversarial test suite** — 25+ escalation techniques tested in CI: ceiling bypass, namespace escalation, Unicode homoglyphs, IR tampering, provider lying.
+- **LangGraph integration** — wrap any compiled SOP as a StateGraph node with one function call.
 
 ## Quickstart
 
@@ -89,6 +99,36 @@ Final state: DONE
 Path: greet
 ```
 
+## Python API
+
+```python
+import sopvm
+
+# Compile a SOP against a policy
+compiled = sopvm.compile("sop.yaml", "policy.yaml")
+
+# Check for policy violations
+result = sopvm.check(compiled)
+if not result.passed:
+    for v in result.violations:
+        print(f"VIOLATION: {v.step_id} — {v.reason}")
+
+# Execute the compiled SOP
+runtime = sopvm.Runtime(compiled)
+run_result = runtime.run()
+print(f"State: {run_result.final_state.value}")
+print(f"Path: {' -> '.join(run_result.path)}")
+```
+
+## CLI Reference
+
+| Command | Purpose | Exit codes |
+|---|---|---|
+| `sopvm compile <sop> --policy <policy> -o <ir>` | Compile SOP YAML to IR JSON | 0 success, 2 error |
+| `sopvm check <ir> --policy <policy>` | Validate IR against policy | 0 pass, 1 violation, 2 error |
+| `sopvm run <ir>` | Execute compiled SOP | 0 DONE, 1 FAILED/DENIED |
+| `sopvm trace <log> <run_id>` | Pretty-print telemetry trace | 0 found, 1 not found |
+
 ## Architecture
 
 ```
@@ -100,19 +140,34 @@ SOP YAML ──► Parser ──► AST ──► Compiler ──► IR ──�
                                           └──────┴──────┘
 ```
 
-| Box | Module | Milestone |
+| Component | Module | Description |
 |---|---|---|
-| Parser | `sopvm.parser` | M2 |
-| AST | `sopvm.parser.ast` | M2 |
-| Compiler (lower+page) | `sopvm.compiler` | M3, M5 |
-| IR | `sopvm.ir` | M3 |
-| Runtime (gate+providers) | `sopvm.runtime` | M6-M8 |
-| Static Checker | `sopvm.checker` | M4 |
-| Telemetry | `sopvm.telemetry` | M10 |
-| CLI | `sopvm.cli` | M11 |
-| LangGraph Adapter | `sopvm.integrations.langgraph` | M9 |
+| Parser | `sopvm.parser` | YAML parsing, JSON Schema validation, semantic checks |
+| AST | `sopvm.parser.ast` | Frozen dataclasses: `SopDocument`, `StepNode`, `CapabilityRequest` |
+| Compiler | `sopvm.compiler` | AST→IR lowering + policy-based capability paging |
+| IR | `sopvm.ir` | `CompiledProgram`, `IrNode` — the only artifact the runtime reads |
+| Capability Model | `sopvm.capability` | Token parser, policy loader, ceiling enforcement |
+| Static Checker | `sopvm.checker` | Compile-time policy validation |
+| Runtime | `sopvm.runtime` | Executor, capability gate, state machine |
+| Plugins | `sopvm.plugins` | `ToolProvider` protocol, registry, sandbox wrapper |
+| Telemetry | `sopvm.telemetry` | `Event` schema, `JsonlSink`, `InMemorySink` |
+| CLI | `sopvm.cli` | `compile`, `check`, `run`, `trace` subcommands |
+| LangGraph | `sopvm.integrations.langgraph` | `as_langgraph_node()` adapter |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design rationale.
+
+## Security
+
+SOPVM's security model is layered:
+
+1. **Compile-time** — the static checker validates every capability against the policy before the IR is emitted.
+2. **Runtime re-validation** — the executor re-validates `capabilities_paged` against the policy at load time, catching IR tampering.
+3. **Gate enforcement** — every tool call is checked against the current step's paged capabilities. DENIED is terminal.
+4. **Provider sandbox** — providers that invoke undeclared capabilities are caught independently of the gate.
+
+The adversarial test suite (`tests/adversarial/`) exercises all four layers with 25+ escalation techniques, run on every PR.
+
+See [examples/adversarial_walkthrough.md](examples/adversarial_walkthrough.md) for a step-by-step walkthrough.
 
 ## Documentation
 
@@ -120,11 +175,27 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design rationale.
 - [INTERFACES.md](INTERFACES.md) — canonical contract schemas (M2-M13)
 - [VERSIONING_POLICY.md](VERSIONING_POLICY.md) — SemVer rules
 - [CHANGELOG.md](CHANGELOG.md) — release history
-- [CONTRIBUTING.md](CONTRIBUTING.md) — development setup
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development setup and code style
+- [POSTMORTEM.md](POSTMORTEM.md) — real incidents found and fixed during the build
 
 ## Examples
 
-- `examples/sops/` — example SOP YAML files
-- `examples/providers/` — reference tool provider implementations
-- `examples/langgraph_integration.py` — LangGraph StateGraph wrapper
-- `examples/adversarial_walkthrough.md` — step-by-step escalation attempt
+- [`examples/sops/`](examples/sops/) — example SOP YAML files
+- [`examples/providers/`](examples/providers/) — reference tool provider implementations
+- [`examples/langgraph_integration.py`](examples/langgraph_integration.py) — LangGraph StateGraph wrapper
+- [`examples/adversarial_walkthrough.md`](examples/adversarial_walkthrough.md) — step-by-step escalation attempt with real CLI output
+
+## Contributing
+
+```bash
+git clone https://github.com/Sushit-prog/sop-runtime.git
+cd sop-runtime
+pip install -e ".[dev]"
+pytest tests/ -v
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide, test taxonomy, and how to propose INTERFACES.md changes.
+
+## License
+
+Apache-2.0
